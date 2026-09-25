@@ -76,6 +76,9 @@ abstract class TimesFormatter
 
     // TODO: implement setCompressor($compressor) so a demo can swap compression at runtime.
 
+    public function setCompressor(Compressor $compressor): void{
+        $this->compressor = $compressor;
+    }
     abstract protected function toText(array $records): string;
 
     public function generate(string $title): string
@@ -100,9 +103,26 @@ class AttendanceTimesFormatter extends TimesFormatter
 
 // TODO: add TimesheetJsonFormatter extends TimesFormatter using json_encode($records, JSON_PRETTY_PRINT).
 
+
+class TimesheetJsonFormatter extends TimesFormatter{
+    protected function toText(array $records): string{
+        return json_encode($records, JSON_PRETTY_PRINT);
+    }
+}
+
 if (basename(__FILE__) === basename($_SERVER['SCRIPT_FILENAME'])) {
     echo "WITH Bridge (GOOD - complete TODOs):\n";
+
     $report = new AttendanceTimesFormatter(new ApiDataSource(), new NoneCompressor());
-    echo $report->generate("TIMES");
-    echo "\n\n  TODO: implement setCompressor() + TimesheetJsonFormatter, demo 2 sources x 2 compressors.\n";
+    echo $report->generate("TIMES") . "\n\n";
+
+    $report->setCompressor(new GzipCompressor());
+    $plainLen = strlen($report->generate("TIMES"));
+    echo "Plain-via-setCompressor size: $plainLen bytes\n";
+
+    $jsonReport = new TimesheetJsonFormatter(new FileDataSource(), new NoneCompressor());
+    $plain = $jsonReport->generate("TIMESHEET");
+    $jsonReport->setCompressor(new GzipCompressor());
+    $gzipped = $jsonReport->generate("TIMESHEET");
+    printf("JSON plain=%d bytes, gzip=%d bytes\n", strlen($plain), strlen($gzipped));
 }
